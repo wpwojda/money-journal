@@ -54,16 +54,11 @@ your device.
 
 ## Screenshots
 
-<!--
-  Add screenshots here before publishing, for example:
+![Dashboard overview, showing balance, income, expenses, planned bills, and money reflection insights](./docs/screenshots/dashboard.png)
 
-  ![Dashboard overview](./docs/screenshots/dashboard.png)
-  ![Quick add and budget](./docs/screenshots/quick-add.png)
-  ![Dark mode](./docs/screenshots/dark-mode.png)
--->
+![Quick-add expense entry with automatic category guessing](./docs/screenshots/quick-add.png)
 
-_Screenshots coming soon - run the app locally (see below) to see it live in
-the meantime._
+![The same view in light mode](./docs/screenshots/light-mode.png)
 
 ## Privacy-first philosophy
 
