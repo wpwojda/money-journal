@@ -1,0 +1,18 @@
+{
+  "name": "Money Journal",
+  "short_name": "Money Journal",
+  "description": "A private, local-first personal finance dashboard. Your financial data never leaves your device.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#5B8C7B",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

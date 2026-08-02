@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Money Journal - private personal finance dashboard</title>
+    <meta
+      name="description"
+      content="A private, local-first personal finance dashboard. No accounts, no cloud, no tracking - your data stays on your device."
+    />
+    <meta name="author" content="Money Journal contributors" />
+
+    <!-- Theme colours match the app's light/dark surface tokens in src/index.css -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAF7F2" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171512" />
+    <meta name="color-scheme" content="light dark" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#5B8C7B" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!--
+      Open Graph / social metadata. These are static strings only - no tracking pixels,
+      no analytics, and no remote scripts anywhere in this document.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Money Journal" />
+    <meta
+      property="og:description"
+      content="A private, local-first personal finance dashboard. Your financial data never leaves your device."
+    />
+    <meta name="twitter:card" content="summary" />
+
+    <!--
+      Fonts are self-hosted via @fontsource/inter and imported in src/main.jsx.
+      Do not add a font CDN <link> here - it would break the project's guarantee that
+      the app makes no third-party requests.
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      Money Journal is a client-side application and needs JavaScript enabled. It runs entirely in
+      your browser and sends nothing to any server.
+    </noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
