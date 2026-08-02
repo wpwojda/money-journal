@@ -37,4 +37,11 @@ export default [
       ],
     },
   },
+  {
+    // Build/tooling config files run under Node, not the browser.
+    files: ["vite.config.js", "tailwind.config.js", "postcss.config.js"],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ];

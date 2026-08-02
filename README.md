@@ -7,6 +7,9 @@ A private, local-first personal finance dashboard. Track income and daily
 expenses, plan recurring bills, and get a quick daily read on your money -
 without an account, a server, or anyone but you ever seeing the data.
 
+**Live demo:** https://purnanandiganaa-alt.github.io/money-journal/
+(after enabling GitHub Pages - see [Deploying](#deploying) below)
+
 > This is a personal finance **journal and dashboard**, not a banking app, a
 > fintech product, or an accounting system. It doesn't connect to your bank,
 > doesn't move money, and doesn't know your name.
@@ -166,6 +169,24 @@ npm run format   # Prettier
 
 CI runs install → lint → build on Node 18, 20, and 22 for every push and pull
 request (`.github/workflows/ci.yml`).
+
+## Deploying
+
+This is a static site with no backend, so it can be hosted anywhere that
+serves static files.
+
+**GitHub Pages (built in):** `.github/workflows/deploy.yml` builds and
+publishes `dist/` on every push to `main`. One-time setup: in the repo on
+GitHub, go to Settings → Pages → Source, and select "GitHub Actions." After
+the next push, the site is live at
+`https://purnanandiganaa-alt.github.io/money-journal/`.
+
+**Netlify / Vercel / Cloudflare Pages (alternative):** connect the repo,
+set the build command to `npm run build` and the output directory to
+`dist`. No configuration changes needed - `vite.config.js` only applies the
+GitHub Pages subpath when the `GITHUB_PAGES` environment variable is set
+(which the `deploy.yml` workflow does), so these builds run at `/` by
+default.
 
 ## Folder structure
 
