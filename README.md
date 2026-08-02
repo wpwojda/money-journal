@@ -1,6 +1,6 @@
 # Money Journal
 
-[![CI](https://github.com/<your-username>/money-journal/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/money-journal/actions/workflows/ci.yml)
+[![CI](https://github.com/purnanandiganaa-alt/money-journal/actions/workflows/ci.yml/badge.svg)](https://github.com/purnanandiganaa-alt/money-journal/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](./LICENSE)
 
 A private, local-first personal finance dashboard. Track income and daily
@@ -128,7 +128,7 @@ somewhere you control.
 ### Installation
 
 ```bash
-git clone https://github.com/<your-username>/money-journal.git
+git clone https://github.com/purnanandiganaa-alt/money-journal.git
 cd money-journal
 npm install
 ```
