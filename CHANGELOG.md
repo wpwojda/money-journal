@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- GitHub Actions workflow (`deploy.yml`) that builds and publishes the app to GitHub Pages on every push to `main`.
+- `vite.config.js` now sets `base: "/money-journal/"` for production builds so assets resolve correctly when served from a GitHub Pages project subpath.
+
 ## [1.0.0] - First public release
 
 ### Added
