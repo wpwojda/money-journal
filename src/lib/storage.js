@@ -232,7 +232,14 @@ export function saveData(data) {
 
   try {
     const previous = localStorage.getItem(STORAGE_KEY);
-    if (previous && previous !== serialized) {
+
+    // Nothing actually changed, so skip the write entirely. This matters for cross-tab
+    // sync: when this tab adopts another tab's update, the save effect still runs, and
+    // without this guard we would echo the value straight back out - bouncing writes
+    // between tabs and churning the backup slot for no reason.
+    if (previous === serialized) return SAVE_OK;
+
+    if (previous) {
       try {
         localStorage.setItem(BACKUP_KEY, previous);
       } catch {
@@ -255,6 +262,41 @@ export function saveData(data) {
     }
     return SAVE_UNAVAILABLE;
   }
+}
+
+/**
+ * Subscribes to data written by OTHER tabs on this origin.
+ *
+ * The browser fires `storage` only in tabs that did *not* perform the write, so this
+ * never sees this tab's own saves and cannot feed back on itself. Without it, every tab
+ * holds an independent snapshot and whichever saves last silently overwrites the rest.
+ *
+ * The callback receives fully migrated and normalized data, ready to drop into state.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToDataChanges(onExternalChange) {
+  function handler(event) {
+    // Ignore unrelated keys. This also filters out BACKUP_KEY (which changes on nearly
+    // every save) and localStorage.clear(), which reports a null key.
+    if (event.key !== STORAGE_KEY) return;
+
+    // A null newValue means the record was removed outright - "clear site data" rather
+    // than an edit. Deliberately keep whatever is in memory instead of blanking the
+    // screen, so the user can still export their data from Settings.
+    if (event.newValue == null) return;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(event.newValue);
+    } catch {
+      // Another tab wrote something unreadable - keep our own good copy.
+      return;
+    }
+    onExternalChange(normalizeData(parsed));
+  }
+
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
 }
 
 /** Reads the automatic backup, if one exists and is parseable. */

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Cross-tab data loss.** Each open tab held its own copy of the whole record with no awareness of the others, so the last tab to save silently overwrote every change made in the rest. Tabs now listen for `storage` events and adopt external updates live, so adding, editing, or deleting in one tab is reflected in all of them without a refresh.
+
+### Changed
+
+- `saveData` now skips the write when the serialized value is unchanged, which prevents an adopted cross-tab update from being echoed back out and avoids needless backup churn.
+
 ### Added
 
 - GitHub Actions workflow (`deploy.yml`) that builds and publishes the app to GitHub Pages on every push to `main`.

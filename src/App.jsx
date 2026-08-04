@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BUDGET_CATEGORIES } from "./constants.js";
 import { SettingsContext } from "./context/SettingsContext.jsx";
-import { loadData, saveData, defaultData, normalizeData, SAVE_OK, SAVE_QUOTA_EXCEEDED } from "./lib/storage.js";
+import {
+  loadData,
+  saveData,
+  defaultData,
+  normalizeData,
+  subscribeToDataChanges,
+  SAVE_OK,
+  SAVE_QUOTA_EXCEEDED,
+} from "./lib/storage.js";
 import { formatCurrency, sum } from "./lib/format.js";
 import { guessCategory } from "./lib/categorize.js";
 import { uid } from "./lib/id.js";
@@ -62,6 +70,11 @@ export default function App() {
     const result = saveData(data);
     setSaveError(result === SAVE_OK ? null : result);
   }, [data]);
+
+  // Adopt writes made in other tabs of this browser. Every tab holds its own copy of the
+  // whole record, so without this the last tab to save would silently overwrite the rest.
+  // saveData no-ops when the value is unchanged, so adopting an update never echoes back.
+  useEffect(() => subscribeToDataChanges(setData), []);
   useEffect(() => {
     applyTheme(data.settings.theme);
   }, [data.settings.theme]);
