@@ -114,7 +114,7 @@ export function generateReflections({
       if (runwayDays < 120) {
         candidates.push({
           score: 4,
-          text: `At your current spending rate, your balance covers roughly ${runwayDays} more days.`,
+          text: `At your current spending rate, what's left this month covers roughly ${runwayDays} days.`,
         });
       }
     }

@@ -13,7 +13,7 @@ export function ExpenseForm({ initial, onSubmit, onDelete, submitLabel }) {
   const [date, setDate] = useState(initial ? initial.date : todayISO());
   const [category, setCategory] = useState(initial ? initial.category : "Food");
   const [description, setDescription] = useState(initial ? initial.description : "");
-  const [paymentMethod, setPaymentMethod] = useState(initial ? initial.paymentMethod : "Cash");
+  const [paymentMethod, setPaymentMethod] = useState(initial && initial.paymentMethod ? initial.paymentMethod : "Card");
   const [notes, setNotes] = useState(initial ? initial.notes : "");
   const [error, setError] = useState(false);
 
@@ -83,7 +83,8 @@ export function ExpenseForm({ initial, onSubmit, onDelete, submitLabel }) {
       </FormField>
       <FormField label="Payment method">
         <div className="flex gap-2">
-          {PAYMENT_METHODS.map((m) => (
+          {/* Older entries logged as Cash still show that option when edited. */}
+          {(PAYMENT_METHODS.includes(paymentMethod) ? PAYMENT_METHODS : [paymentMethod, ...PAYMENT_METHODS]).map((m) => (
             <button
               type="button"
               key={m}

@@ -28,7 +28,7 @@ export const CATEGORY_COLORS = {
 };
 
 export const INCOME_SOURCES = ["Salary", "Freelance", "Gift", "Other"];
-export const PAYMENT_METHODS = ["Cash", "Card", "Online"];
+export const PAYMENT_METHODS = ["Card", "Online"];
 export const CURRENCIES = ["GBP", "EUR", "USD", "INR"];
 export const RECURRENCE_TYPES = ["monthly", "weekly", "yearly", "onetime"];
 export const RECURRENCE_LABELS = {

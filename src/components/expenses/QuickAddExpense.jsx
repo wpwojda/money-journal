@@ -41,7 +41,7 @@ export function QuickAddExpense({ onAdd, recentCategories }) {
       date: todayISO(),
       category: manualCategory || guessCategory(parsed.description, customNames),
       description: parsed.description,
-      paymentMethod: "Cash",
+      paymentMethod: "Card",
       notes: "",
     });
     setText("");

@@ -150,7 +150,8 @@ export default function App() {
 
   const totalIncomeMonth = sum(monthIncome, "amount");
   const totalExpensesMonth = sum(monthExpenses, "amount");
-  const allTimeBalance = sum(effectiveIncome, "amount") - sum(effectiveExpenses, "amount");
+  // Balances are per month: what came in for this month minus what has gone out.
+  const monthBalance = totalIncomeMonth - totalExpensesMonth;
 
   // Recurring items applicable to the viewed month, with planned/paid/status computed.
   const recurringComputed = useMemo(() => {
@@ -179,7 +180,6 @@ export default function App() {
   const totalVariable = sum(variableExpenses, "amount");
 
   const remainingBudget = totalIncomeMonth + upcomingIncome - totalExpensesMonth - totalPlannedRemaining;
-  const expectedEndOfMonthBalance = allTimeBalance + upcomingIncome - totalPlannedRemaining;
   const daysLeft = isCurrentMonth
     ? Math.max(daysInMonth(cursor.year, cursor.month) - new Date().getDate() + 1, 1)
     : daysInMonth(cursor.year, cursor.month);
@@ -206,7 +206,7 @@ export default function App() {
         monthExpenses,
         monthIncome,
         prevMonthExpenses,
-        allTimeBalance,
+        allTimeBalance: monthBalance,
         cursor,
         plannedRemaining: totalPlannedRemaining,
         totalPlannedBudgeted,
@@ -214,7 +214,7 @@ export default function App() {
         formatCurrency: fmt,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [monthExpenses, monthIncome, prevMonthExpenses, allTimeBalance, cursor, totalPlannedRemaining, totalPlannedBudgeted, budgetItemsComputed.length, data.settings.currency]
+    [monthExpenses, monthIncome, prevMonthExpenses, monthBalance, cursor, totalPlannedRemaining, totalPlannedBudgeted, budgetItemsComputed.length, data.settings.currency]
   );
 
   const allTransactions = useMemo(() => {
@@ -496,12 +496,11 @@ export default function App() {
         </div>
 
         <DashboardCards
-          balance={allTimeBalance}
+          balance={monthBalance}
           income={totalIncomeMonth}
           actualExpenses={totalExpensesMonth}
           plannedRemaining={totalPlannedRemaining}
           remainingBudget={remainingBudget}
-          expectedBalance={expectedEndOfMonthBalance}
           perDay={availablePerDay}
         />
 
