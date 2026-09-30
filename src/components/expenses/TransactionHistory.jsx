@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { EXPENSE_CATEGORIES, CATEGORY_COLORS } from "../../constants.js";
-import { formatDayLabel } from "../../lib/dateUtils.js";
+import { formatDayLabel, monthKeyOf } from "../../lib/dateUtils.js";
+import { MONTH_NAMES } from "../../constants.js";
 import { useSettings } from "../../context/SettingsContext.jsx";
-import { IconSearch, IconClose, IconRepeat } from "../common/Icons.jsx";
+import { IconSearch, IconClose, IconRepeat, IconEdit } from "../common/Icons.jsx";
 import { CategoryTag } from "../common/CategoryTag.jsx";
 
 export function TransactionHistory({ items, onEdit, onDelete }) {
-  const { formatCurrency: fmt } = useSettings();
+  const { formatCurrency: fmt, expenseCategories, categoryColor } = useSettings();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [catFilter, setCatFilter] = useState(new Set());
@@ -16,8 +16,10 @@ export function TransactionHistory({ items, onEdit, onDelete }) {
     items.forEach((i) => {
       if (i.type === "expense") s.add(i.category);
     });
-    return EXPENSE_CATEGORIES.filter((c) => s.has(c));
-  }, [items]);
+    // Known categories in their usual order, then any leftovers (e.g. from an old import).
+    const known = expenseCategories.filter((c) => s.has(c));
+    return [...known, ...[...s].filter((c) => !known.includes(c))];
+  }, [items, expenseCategories]);
 
   function toggleCat(cat) {
     setCatFilter((prev) => {
@@ -76,7 +78,7 @@ export function TransactionHistory({ items, onEdit, onDelete }) {
               key={cat}
               onClick={() => toggleCat(cat)}
               className={"chip " + (catFilter.has(cat) ? "selected" : "")}
-              style={catFilter.has(cat) ? { backgroundColor: CATEGORY_COLORS[cat], color: "#fff" } : {}}
+              style={catFilter.has(cat) ? { backgroundColor: categoryColor(cat), color: "#fff" } : {}}
             >
               {cat}
             </button>
@@ -110,7 +112,12 @@ export function TransactionHistory({ items, onEdit, onDelete }) {
                         </span>
                       )}
                       <span className="text-sm text-secondary-c truncate">{item.description || item.notes || ""}</span>
-                      {item.type === "expense" && item.budgetItemId && (
+                      {item.type === "income" && item.budgetMonth && item.budgetMonth !== monthKeyOf(item.date) && (
+                        <span className="text-xs text-muted-c shrink-0">
+                          for {MONTH_NAMES[parseInt(item.budgetMonth.slice(5, 7), 10) - 1].slice(0, 3)}
+                        </span>
+                      )}
+                      {item.budgetItemId && (
                         <span className="text-muted-c shrink-0">
                           <IconRepeat size={11} />
                         </span>
@@ -122,6 +129,19 @@ export function TransactionHistory({ items, onEdit, onDelete }) {
                         {fmt(item.amount)}
                       </span>
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(item);
+                        }}
+                        className="day-delete-btn transition-opacity text-muted-c hover:text-primary-c p-1"
+                        aria-label="Edit transaction"
+                        title="Edit"
+                      >
+                        <IconEdit size={12} />
+                      </button>
+                      <button
+                        aria-label="Delete transaction"
+                        title="Delete"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDelete(item.type, item.id);

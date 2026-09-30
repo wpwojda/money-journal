@@ -5,6 +5,7 @@ import { todayISO } from "../../lib/dateUtils.js";
 import { Modal } from "../common/Modal.jsx";
 import { FormField } from "../common/FormField.jsx";
 import { IconDownload, IconUpload, IconRepeat } from "../common/Icons.jsx";
+import { CategoriesPanel } from "./CategoriesPanel.jsx";
 
 export function SettingsModal({ onClose, settings, onUpdateSettings, fullData, onImport, onClearAll }) {
   const [tab, setTab] = useState("general");
@@ -66,6 +67,7 @@ export function SettingsModal({ onClose, settings, onUpdateSettings, fullData, o
 
   const tabs = [
     { id: "general", label: "General" },
+    { id: "categories", label: "Categories" },
     { id: "data", label: "Data" },
   ];
 
@@ -177,6 +179,8 @@ export function SettingsModal({ onClose, settings, onUpdateSettings, fullData, o
           </FormField>
         </div>
       )}
+
+      {tab === "categories" && <CategoriesPanel />}
 
       {tab === "data" && (
         <div className="space-y-3">

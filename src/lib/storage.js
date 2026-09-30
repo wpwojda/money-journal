@@ -12,7 +12,7 @@ export const BACKUP_KEY = "money-journal-backup-v1";
  * an old backup restored years later still upgrades cleanly instead of being
  * silently misread.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 4;
 
 /** Result codes returned by saveData so callers can surface real failures to the user. */
 export const SAVE_OK = "ok";
@@ -26,7 +26,9 @@ export function defaultData() {
     expenses: [],
     budgetItems: [],
     budgetCategories: [...BUDGET_CATEGORIES],
-    settings: { currency: "EUR", theme: "system" },
+    customCategories: [],
+    customIncomeSources: [],
+    settings: { currency: "GBP", theme: "system" },
   };
 }
 
@@ -80,6 +82,22 @@ const MIGRATIONS = {
     }
     return next;
   },
+
+  // v2 -> v3: budget items become general recurring items. They can now be income as
+  // well as expenses, and can log themselves automatically on their due date.
+  // Existing items keep their old behaviour (expense, manual logging).
+  2: (data) => ({
+    ...data,
+    version: 3,
+    budgetItems: Array.isArray(data.budgetItems)
+      ? data.budgetItems.map((it) => ({ type: "expense", autoLog: false, startDate: null, skipped: [], ...it }))
+      : [],
+  }),
+
+  // v3 -> v4: user-defined expense categories and income sources, plus new monthly
+  // schedule options (last <weekday> of the month, income counting towards next month).
+  // All additive; normalizeData fills in the defaults.
+  3: (data) => ({ ...data, version: 4 }),
 };
 
 /**
@@ -123,6 +141,13 @@ export function normalizeData(parsed) {
         notes: it.notes || "",
         active: it.active !== false,
         order: typeof it.order === "number" ? it.order : i,
+        type: it.type === "income" ? "income" : "expense",
+        autoLog: it.autoLog === true,
+        startDate: typeof it.startDate === "string" ? it.startDate : null,
+        skipped: Array.isArray(it.skipped) ? it.skipped.filter((d) => typeof d === "string") : [],
+        monthlyRule: it.monthlyRule === "lastWeekday" ? "lastWeekday" : "day",
+        weekday: typeof it.weekday === "number" && it.weekday >= 0 && it.weekday <= 6 ? it.weekday : 5,
+        countsNextMonth: it.countsNextMonth === true,
       }))
     : [];
 
@@ -135,6 +160,14 @@ export function normalizeData(parsed) {
     expenses,
     budgetItems,
     budgetCategories,
+    customCategories: Array.isArray(migrated.customCategories)
+      ? migrated.customCategories
+          .filter((c) => c && typeof c.name === "string" && c.name.trim())
+          .map((c) => ({ name: c.name.trim(), color: typeof c.color === "string" ? c.color : "#BDB4A6" }))
+      : [],
+    customIncomeSources: Array.isArray(migrated.customIncomeSources)
+      ? migrated.customIncomeSources.filter((n) => typeof n === "string" && n.trim()).map((n) => n.trim())
+      : [],
     settings: {
       currency: (migrated.settings && migrated.settings.currency) || base.settings.currency,
       theme: (migrated.settings && migrated.settings.theme) || base.settings.theme,

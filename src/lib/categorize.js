@@ -1,8 +1,13 @@
 import { CATEGORY_KEYWORDS } from "../constants.js";
 
-/** Best-effort category guess from free text, used by quick-add and by budget-item logging. */
-export function guessCategory(text) {
+/**
+ * Best-effort category guess from free text, used by quick-add and by recurring items.
+ * The user's own categories are checked first, by name: "Pets - 12" lands in "Pets".
+ */
+export function guessCategory(text, customNames = []) {
   const lower = (text || "").toLowerCase();
+  const custom = customNames.find((n) => n && lower.includes(n.toLowerCase()));
+  if (custom) return custom;
   for (const cat of Object.keys(CATEGORY_KEYWORDS)) {
     if (CATEGORY_KEYWORDS[cat].some((k) => lower.includes(k))) return cat;
   }

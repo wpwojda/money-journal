@@ -10,7 +10,7 @@ export function BudgetDueBanner({ items, cursor, onLogOne, onLogAll }) {
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div className="flex items-center gap-2 text-sm font-medium text-primary-c">
           <IconRepeat size={15} />
-          {items.length} planned {items.length === 1 ? "expense" : "expenses"} still due for{" "}
+          {items.length} recurring {items.length === 1 ? "item" : "items"} still to log for{" "}
           {monthLabel(cursor.year, cursor.month)}
         </div>
         <button onClick={onLogAll} className="btn-primary text-xs px-3 py-1.5">
@@ -20,7 +20,8 @@ export function BudgetDueBanner({ items, cursor, onLogOne, onLogAll }) {
       <div className="flex flex-wrap gap-2">
         {items.map((it) => (
           <button key={it.id} onClick={() => onLogOne(it)} className="chip">
-            {it.name} · {fmt(it.remaining)}
+            {it.name} · {it.type === "income" ? "+" : ""}
+            {fmt(it.remaining)}
           </button>
         ))}
       </div>

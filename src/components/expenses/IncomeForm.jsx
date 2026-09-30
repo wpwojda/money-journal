@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { INCOME_SOURCES } from "../../constants.js";
-import { todayISO } from "../../lib/dateUtils.js";
+import { todayISO, monthKeyOf, monthLabel } from "../../lib/dateUtils.js";
+import { nextMonthKey } from "../../lib/recurring.js";
+import { useSettings } from "../../context/SettingsContext.jsx";
+import { ChipPicker } from "../common/ChipPicker.jsx";
+import { ToggleSwitch } from "../common/ToggleSwitch.jsx";
 import { uid } from "../../lib/id.js";
 import { IconTrash } from "../common/Icons.jsx";
 import { FormField } from "../common/FormField.jsx";
@@ -11,6 +14,10 @@ export function IncomeForm({ initial, onSubmit, onDelete, submitLabel }) {
   const [source, setSource] = useState(initial ? initial.source : "Salary");
   const [notes, setNotes] = useState(initial ? initial.notes : "");
   const [error, setError] = useState(false);
+  const [forNextMonth, setForNextMonth] = useState(
+    !!(initial && initial.budgetMonth && initial.budgetMonth !== monthKeyOf(initial.date))
+  );
+  const { incomeSources, addIncomeSource } = useSettings();
 
   function submit(e) {
     e.preventDefault();
@@ -19,11 +26,21 @@ export function IncomeForm({ initial, onSubmit, onDelete, submitLabel }) {
       setError(true);
       return;
     }
-    onSubmit({ id: initial ? initial.id : uid(), amount: amt, date, source, notes: notes.trim() });
+    // Spread `initial` first so edits keep links like budgetItemId and description.
+    const entry = { ...(initial || {}), id: initial ? initial.id : uid(), amount: amt, date, source, notes: notes.trim() };
+    if (forNextMonth) entry.budgetMonth = nextMonthKey(date);
+    else delete entry.budgetMonth;
+    onSubmit(entry);
   }
 
   return (
     <form onSubmit={submit}>
+      {initial && initial.budgetItemId && (
+        <div className="text-xs text-muted-c mb-3 surface-muted rounded-lg px-3 py-2">
+          Logged by a recurring item{initial.description ? ` (${initial.description})` : ""}. Editing this only changes
+          this one entry. Deleting it skips this occurrence.
+        </div>
+      )}
       <FormField label="Amount">
         <input
           type="number"
@@ -43,20 +60,26 @@ export function IncomeForm({ initial, onSubmit, onDelete, submitLabel }) {
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-field" />
       </FormField>
       <FormField label="Source">
-        <div className="flex flex-wrap gap-1.5">
-          {INCOME_SOURCES.map((s) => (
-            <button
-              type="button"
-              key={s}
-              onClick={() => setSource(s)}
-              className={"chip " + (source === s ? "selected" : "")}
-              style={source === s ? { backgroundColor: "#5B8C7B", color: "#fff" } : {}}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <ChipPicker
+          options={incomeSources.includes(source) ? incomeSources : [...incomeSources, source]}
+          value={source}
+          onChange={setSource}
+          colorFor={() => "#5B8C7B"}
+          onCreate={addIncomeSource}
+          newLabel="New source"
+        />
       </FormField>
+      <div className="flex items-center justify-between surface-muted rounded-xl px-3.5 py-2.5 mb-4 gap-3">
+        <span className="text-sm text-secondary-c">
+          Counts towards next month&apos;s budget
+          {forNextMonth && date && (
+            <span className="block text-xs text-muted-c">
+              Included in {monthLabel(+nextMonthKey(date).slice(0, 4), +nextMonthKey(date).slice(5, 7))}
+            </span>
+          )}
+        </span>
+        <ToggleSwitch checked={forNextMonth} onChange={setForNextMonth} />
+      </div>
       <FormField label="Notes (optional)">
         <textarea
           value={notes}

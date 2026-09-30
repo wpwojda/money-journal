@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BUDGET_CATEGORIES } from "./constants.js";
 import { SettingsContext } from "./context/SettingsContext.jsx";
 import {
   loadData,
@@ -11,8 +10,6 @@ import {
   SAVE_QUOTA_EXCEEDED,
 } from "./lib/storage.js";
 import { formatCurrency, sum } from "./lib/format.js";
-import { guessCategory } from "./lib/categorize.js";
-import { uid } from "./lib/id.js";
 import { applyTheme } from "./lib/theme.js";
 import {
   shiftMonth,
@@ -29,8 +26,17 @@ import {
   dueDateForItemInMonth,
 } from "./lib/budget.js";
 import { generateReflections } from "./lib/reflections.js";
+import { generateDueTransactions, transactionForItem, itemType } from "./lib/recurring.js";
+import {
+  allExpenseCategories,
+  allIncomeSources,
+  categoryColor,
+  isBuiltInCategory,
+  isBuiltInIncomeSource,
+  CUSTOM_CATEGORY_PALETTE,
+} from "./lib/categories.js";
 
-import { IconPlus, IconSettings, IconChevron, IconWallet, IconClose } from "./components/common/Icons.jsx";
+import { IconPlus, IconSettings, IconChevron, IconRepeat, IconClose } from "./components/common/Icons.jsx";
 import { Modal } from "./components/common/Modal.jsx";
 import { DashboardCards } from "./components/dashboard/DashboardCards.jsx";
 import { MoneyReflection } from "./components/dashboard/MoneyReflection.jsx";
@@ -75,6 +81,19 @@ export default function App() {
   // whole record, so without this the last tab to save would silently overwrite the rest.
   // saveData no-ops when the value is unchanged, so adopting an update never echoes back.
   useEffect(() => subscribeToDataChanges(setData), []);
+
+  // Automatic recurring items: log anything that has fallen due. Runs on load, whenever
+  // the recurring list changes, and when the tab comes back into view (so a phone that
+  // left the app open overnight still picks up today's items).
+  useEffect(() => {
+    const run = () => setData((d) => generateDueTransactions(d) || d);
+    run();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") run();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [data.budgetItems]);
   useEffect(() => {
     applyTheme(data.settings.theme);
   }, [data.settings.theme]);
@@ -110,7 +129,12 @@ export default function App() {
     [effectiveExpenses, monthKey]
   );
   const monthIncome = useMemo(
-    () => effectiveIncome.filter((i) => monthKeyOf(i.date) === monthKey).sort((a, b) => b.date.localeCompare(a.date)),
+    // Income can be marked as belonging to a different month than the day it arrived
+    // (e.g. salary paid late in September for October), via budgetMonth.
+    () =>
+      effectiveIncome
+        .filter((i) => (i.budgetMonth || monthKeyOf(i.date)) === monthKey)
+        .sort((a, b) => b.date.localeCompare(a.date)),
     [effectiveIncome, monthKey]
   );
   const prevMonthExpenses = useMemo(
@@ -122,18 +146,22 @@ export default function App() {
   const totalExpensesMonth = sum(monthExpenses, "amount");
   const allTimeBalance = sum(effectiveIncome, "amount") - sum(effectiveExpenses, "amount");
 
-  // Budget items applicable to the viewed month, with planned/paid/status computed.
-  const budgetItemsComputed = useMemo(() => {
+  // Recurring items applicable to the viewed month, with planned/paid/status computed.
+  const recurringComputed = useMemo(() => {
     return (data.budgetItems || [])
       .filter((it) => isApplicableThisMonth(it, cursor))
       .sort((a, b) => a.order - b.order)
       .map((it) => {
         const planned = plannedAmountForItem(it);
-        const paid = paidAmountForItem(it, monthExpenses);
+        const paid = paidAmountForItem(it, itemType(it) === "income" ? monthIncome : monthExpenses);
         const status = statusForItem(it, planned, paid, cursor);
         return { ...it, planned, paid, status, remaining: Math.max(planned - paid, 0) };
       });
-  }, [data.budgetItems, cursor, monthExpenses]);
+  }, [data.budgetItems, cursor, monthExpenses, monthIncome]);
+  const budgetItemsComputed = useMemo(() => recurringComputed.filter((it) => itemType(it) === "expense"), [recurringComputed]);
+  const upcomingIncome = recurringComputed
+    .filter((it) => itemType(it) === "income")
+    .reduce((acc, it) => acc + it.remaining, 0);
 
   const totalPlannedBudgeted = sum(budgetItemsComputed, "planned");
   const totalPlannedPaidCapped = budgetItemsComputed.reduce((acc, b) => acc + Math.min(b.paid, b.planned), 0);
@@ -144,8 +172,8 @@ export default function App() {
   const totalFixed = sum(fixedExpenses, "amount");
   const totalVariable = sum(variableExpenses, "amount");
 
-  const remainingBudget = totalIncomeMonth - totalExpensesMonth - totalPlannedRemaining;
-  const expectedEndOfMonthBalance = allTimeBalance - totalPlannedRemaining;
+  const remainingBudget = totalIncomeMonth + upcomingIncome - totalExpensesMonth - totalPlannedRemaining;
+  const expectedEndOfMonthBalance = allTimeBalance + upcomingIncome - totalPlannedRemaining;
   const daysLeft = isCurrentMonth
     ? Math.max(daysInMonth(cursor.year, cursor.month) - new Date().getDate() + 1, 1)
     : daysInMonth(cursor.year, cursor.month);
@@ -197,7 +225,11 @@ export default function App() {
     return [...exp, ...inc].sort((a, b) => b.date.localeCompare(a.date));
   }, [monthExpenses, monthIncome]);
 
-  const unpaidBudgetItems = useMemo(() => budgetItemsComputed.filter((b) => b.remaining > 0), [budgetItemsComputed]);
+  // Automatic items log themselves, so only manual ones need a nudge.
+  const unpaidBudgetItems = useMemo(
+    () => recurringComputed.filter((b) => b.remaining > 0 && !b.autoLog),
+    [recurringComputed]
+  );
 
   function addExpense(entry) {
     setData((d) => ({ ...d, expenses: [...d.expenses, entry] }));
@@ -213,12 +245,21 @@ export default function App() {
   }
 
   function finalizeDelete(pd) {
-    setData((d) => ({
-      ...d,
-      [pd.type === "expense" ? "expenses" : "income"]: d[pd.type === "expense" ? "expenses" : "income"].filter(
-        (x) => x.id !== pd.id
-      ),
-    }));
+    setData((d) => {
+      const key = pd.type === "expense" ? "expenses" : "income";
+      const next = { ...d, [key]: d[key].filter((x) => x.id !== pd.id) };
+      // Deleting one occurrence of a recurring item means "skip this one" - remember it
+      // so the automatic logger doesn't put it straight back.
+      const { budgetItemId, occurrence } = pd.item || {};
+      if (budgetItemId && occurrence) {
+        next.budgetItems = (d.budgetItems || []).map((b) =>
+          b.id === budgetItemId && !(b.skipped || []).includes(occurrence)
+            ? { ...b, skipped: [...(b.skipped || []), occurrence] }
+            : b
+        );
+      }
+      return next;
+    });
   }
 
   function requestDelete(type, id) {
@@ -242,18 +283,11 @@ export default function App() {
   }
 
   function logBudgetItem(item) {
-    const computed = budgetItemsComputed.find((b) => b.id === item.id) || item;
+    const computed = recurringComputed.find((b) => b.id === item.id) || item;
     const amt = computed.remaining > 0 ? computed.remaining : computed.planned || item.amount;
-    addExpense({
-      id: uid(),
-      amount: amt,
-      date: dueDateForItemInMonth(item, cursor),
-      category: guessCategory(item.name),
-      description: item.name,
-      paymentMethod: "Card",
-      notes: "",
-      budgetItemId: item.id,
-    });
+    const tx = transactionForItem(item, dueDateForItemInMonth(item, cursor), amt, data.customCategories || []);
+    if (itemType(item) === "income") addIncome(tx);
+    else addExpense(tx);
   }
   function logAllBudgetItems() {
     unpaidBudgetItems.forEach(logBudgetItem);
@@ -289,8 +323,58 @@ export default function App() {
       };
     });
   }
-  function addBudgetCategory(name) {
-    setData((d) => ({ ...d, budgetCategories: Array.from(new Set([...(d.budgetCategories || []), name])) }));
+  // ---- Custom categories and income sources ----
+  const customCategories = useMemo(() => data.customCategories || [], [data.customCategories]);
+  const customIncomeSources = useMemo(() => data.customIncomeSources || [], [data.customIncomeSources]);
+  const expenseCategories = useMemo(() => allExpenseCategories(customCategories), [customCategories]);
+  const incomeSources = useMemo(() => allIncomeSources(customIncomeSources), [customIncomeSources]);
+
+  /** Adds a custom expense category. Returns the canonical name (existing match if any). */
+  function addExpenseCategory(rawName) {
+    const name = (rawName || "").trim();
+    if (!name) return null;
+    const existing = expenseCategories.find((c) => c.toLowerCase() === name.toLowerCase());
+    if (existing) return existing;
+    setData((d) => {
+      const list = d.customCategories || [];
+      if (isBuiltInCategory(name) || list.some((c) => c.name.toLowerCase() === name.toLowerCase())) return d;
+      const color = CUSTOM_CATEGORY_PALETTE[list.length % CUSTOM_CATEGORY_PALETTE.length];
+      return { ...d, customCategories: [...list, { name, color }] };
+    });
+    return name;
+  }
+  /** Removes a custom category; anything filed under it moves to "Other". */
+  function deleteExpenseCategory(name) {
+    setData((d) => ({
+      ...d,
+      customCategories: (d.customCategories || []).filter((c) => c.name !== name),
+      expenses: d.expenses.map((e) => (e.category === name ? { ...e, category: "Other" } : e)),
+      budgetItems: (d.budgetItems || []).map((b) =>
+        itemType(b) === "expense" && b.category === name ? { ...b, category: "Other" } : b
+      ),
+    }));
+  }
+  function addIncomeSource(rawName) {
+    const name = (rawName || "").trim();
+    if (!name) return null;
+    const existing = incomeSources.find((c) => c.toLowerCase() === name.toLowerCase());
+    if (existing) return existing;
+    setData((d) => {
+      const list = d.customIncomeSources || [];
+      if (isBuiltInIncomeSource(name) || list.some((n) => n.toLowerCase() === name.toLowerCase())) return d;
+      return { ...d, customIncomeSources: [...list, name] };
+    });
+    return name;
+  }
+  function deleteIncomeSource(name) {
+    setData((d) => ({
+      ...d,
+      customIncomeSources: (d.customIncomeSources || []).filter((n) => n !== name),
+      income: d.income.map((i) => (i.source === name ? { ...i, source: "Other" } : i)),
+      budgetItems: (d.budgetItems || []).map((b) =>
+        itemType(b) === "income" && b.category === name ? { ...b, category: "Other" } : b
+      ),
+    }));
   }
 
   function updateSettings(patch) {
@@ -304,9 +388,22 @@ export default function App() {
   }
 
   const settingsCtxValue = useMemo(
-    () => ({ settings: data.settings, formatCurrency: fmt, updateSettings }),
+    () => ({
+      settings: data.settings,
+      formatCurrency: fmt,
+      updateSettings,
+      expenseCategories,
+      incomeSources,
+      customCategories,
+      customIncomeSources,
+      categoryColor: (name) => categoryColor(name, customCategories),
+      addExpenseCategory,
+      addIncomeSource,
+      deleteExpenseCategory,
+      deleteIncomeSource,
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.settings]
+    [data.settings, expenseCategories, incomeSources, customCategories, customIncomeSources]
   );
 
   return (
@@ -433,8 +530,10 @@ export default function App() {
                 onClick={() => setModal("budget")}
                 className="py-2.5 px-3 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-1.5"
                 style={{ backgroundColor: "#D3A85C" }}
+                title="Recurring payments and income"
+                aria-label="Recurring payments and income"
               >
-                <IconWallet size={14} />
+                <IconRepeat size={14} />
               </button>
             </div>
 
@@ -512,15 +611,14 @@ export default function App() {
           <BudgetModal
             onClose={() => setModal(null)}
             budgetItems={data.budgetItems || []}
-            budgetCategories={data.budgetCategories || BUDGET_CATEGORIES}
             cursor={cursor}
             monthExpenses={monthExpenses}
+            monthIncome={monthIncome}
             onAdd={addBudgetItem}
             onUpdate={updateBudgetItem}
             onDelete={deleteBudgetItem}
             onToggleActive={toggleBudgetItemActive}
             onReorder={reorderBudgetItem}
-            onAddCategory={addBudgetCategory}
             onLogItem={logBudgetItem}
           />
         )}

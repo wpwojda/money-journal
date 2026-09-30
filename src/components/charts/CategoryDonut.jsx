@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { CATEGORY_COLORS } from "../../constants.js";
 import { computeCategoryTotals } from "../../lib/format.js";
 import { useSettings } from "../../context/SettingsContext.jsx";
 import { EmptyChartState } from "./EmptyChartState.jsx";
 
 export function CategoryDonut({ expenses }) {
-  const { formatCurrency: fmt } = useSettings();
+  const { formatCurrency: fmt, categoryColor } = useSettings();
   const data = useMemo(() => {
     const totals = computeCategoryTotals(expenses);
     return Object.keys(totals)
@@ -21,7 +20,7 @@ export function CategoryDonut({ expenses }) {
       <PieChart>
         <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
           {data.map((d, i) => (
-            <Cell key={i} fill={CATEGORY_COLORS[d.name] || CATEGORY_COLORS.Other} stroke="none" />
+            <Cell key={i} fill={categoryColor(d.name)} stroke="none" />
           ))}
         </Pie>
         <Tooltip formatter={(v) => fmt(v)} />

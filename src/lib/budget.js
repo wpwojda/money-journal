@@ -1,4 +1,4 @@
-import { clamp, dateFor, daysInMonth, monthKeyOf, keyFor } from "./dateUtils.js";
+import { clamp, dateFor, daysInMonth, monthKeyOf, keyFor, shiftMonth, todayISO } from "./dateUtils.js";
 import { sum } from "./format.js";
 
 /** Whether a budget item applies to the given { year, month } cursor. */
@@ -32,6 +32,35 @@ export function paidAmountForItem(item, monthExpenses) {
   );
 }
 
+export const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** Whether a monthly item uses the "last <weekday> of the month" rule. */
+export function usesLastWeekday(item) {
+  return item.recurrence === "monthly" && item.monthlyRule === "lastWeekday";
+}
+
+/** The date a monthly/weekly item falls on in a given calendar month. */
+export function occurrenceInMonth(item, year, month) {
+  const dim = daysInMonth(year, month);
+  if (usesLastWeekday(item)) {
+    const weekday = typeof item.weekday === "number" ? item.weekday : 5;
+    const lastDow = new Date(year, month - 1, dim).getDay();
+    return dateFor(year, month, dim - ((lastDow - weekday + 7) % 7));
+  }
+  return dateFor(year, month, clamp(item.dueDay || 1, 1, dim));
+}
+
+/** Short human description of when an item falls due, e.g. "Monthly · last Friday". */
+export function describeSchedule(item) {
+  if (usesLastWeekday(item)) {
+    const weekday = typeof item.weekday === "number" ? item.weekday : 5;
+    return `Monthly · last ${WEEKDAY_NAMES[weekday]}`;
+  }
+  if (item.recurrence === "monthly" && item.dueDay) return `Monthly · day ${item.dueDay}`;
+  const labels = { monthly: "Monthly", weekly: "Weekly", yearly: "Yearly", onetime: "One-time" };
+  return labels[item.recurrence] || "Monthly";
+}
+
 export function dueDayOfItem(item) {
   if (item.recurrence === "onetime" || item.recurrence === "yearly") {
     return item.dueDate ? parseInt(item.dueDate.slice(8, 10), 10) : null;
@@ -39,9 +68,16 @@ export function dueDayOfItem(item) {
   return item.dueDay || null;
 }
 
-/** The concrete date to use when logging this item as paid in the viewed month. */
+/**
+ * The concrete date to use when logging this item for the viewed month. Income that
+ * "counts towards next month" is paid in the month before the one it belongs to.
+ */
 export function dueDateForItemInMonth(item, cursor) {
   if (item.recurrence === "onetime") return item.dueDate;
+  if (item.recurrence === "monthly") {
+    const c = item.countsNextMonth ? shiftMonth(cursor.year, cursor.month, -1) : cursor;
+    return occurrenceInMonth(item, c.year, c.month);
+  }
   const dim = daysInMonth(cursor.year, cursor.month);
   const day = clamp(dueDayOfItem(item) || 1, 1, dim);
   return dateFor(cursor.year, cursor.month, day);
@@ -52,9 +88,7 @@ export function statusForItem(item, planned, paid, cursor) {
   if (paid > 0) return "Partial";
   const today = new Date();
   const isCurrent = today.getFullYear() === cursor.year && today.getMonth() + 1 === cursor.month;
-  if (isCurrent) {
-    const dueDay = dueDayOfItem(item);
-    if (dueDay && today.getDate() > dueDay) return "Overdue";
-  }
+  const hasFixedDate = usesLastWeekday(item) || dueDayOfItem(item);
+  if (isCurrent && hasFixedDate && dueDateForItemInMonth(item, cursor) < todayISO()) return "Overdue";
   return "Upcoming";
 }

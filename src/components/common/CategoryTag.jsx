@@ -1,8 +1,9 @@
-import { CATEGORY_COLORS } from "../../constants.js";
+import { useSettings } from "../../context/SettingsContext.jsx";
 import { CategoryIcon } from "./Icons.jsx";
 
 export function CategoryTag({ category }) {
-  const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
+  const { categoryColor } = useSettings();
+  const color = categoryColor(category);
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"

@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { EXPENSE_CATEGORIES, CATEGORY_COLORS, PAYMENT_METHODS } from "../../constants.js";
+import { PAYMENT_METHODS } from "../../constants.js";
+import { useSettings } from "../../context/SettingsContext.jsx";
+import { ChipPicker } from "../common/ChipPicker.jsx";
 import { todayISO } from "../../lib/dateUtils.js";
 import { uid } from "../../lib/id.js";
-import { CategoryIcon, IconTrash } from "../common/Icons.jsx";
+import { IconTrash } from "../common/Icons.jsx";
 import { FormField } from "../common/FormField.jsx";
 
 export function ExpenseForm({ initial, onSubmit, onDelete, submitLabel }) {
+  const { expenseCategories, categoryColor, addExpenseCategory } = useSettings();
   const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
   const [date, setDate] = useState(initial ? initial.date : todayISO());
   const [category, setCategory] = useState(initial ? initial.category : "Food");
@@ -22,6 +25,8 @@ export function ExpenseForm({ initial, onSubmit, onDelete, submitLabel }) {
       return;
     }
     onSubmit({
+      // Spread `initial` first so edits keep links like budgetItemId and occurrence.
+      ...(initial || {}),
       id: initial ? initial.id : uid(),
       amount: amt,
       date,
@@ -29,7 +34,6 @@ export function ExpenseForm({ initial, onSubmit, onDelete, submitLabel }) {
       description: description.trim(),
       paymentMethod,
       notes: notes.trim(),
-      budgetItemId: initial ? initial.budgetItemId : undefined,
     });
   }
 
@@ -37,7 +41,7 @@ export function ExpenseForm({ initial, onSubmit, onDelete, submitLabel }) {
     <form onSubmit={submit}>
       {initial && initial.budgetItemId && (
         <div className="text-xs text-muted-c mb-3 surface-muted rounded-lg px-3 py-2">
-          Linked to a budget item — editing this won&apos;t change the budget item itself.
+          Logged by a recurring item. Editing this only changes this one entry. Deleting it skips this occurrence.
         </div>
       )}
       <FormField label="Amount">
@@ -59,19 +63,15 @@ export function ExpenseForm({ initial, onSubmit, onDelete, submitLabel }) {
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-field" />
       </FormField>
       <FormField label="Category">
-        <div className="flex flex-wrap gap-1.5">
-          {EXPENSE_CATEGORIES.map((c) => (
-            <button
-              type="button"
-              key={c}
-              onClick={() => setCategory(c)}
-              className={"chip " + (category === c ? "selected" : "")}
-              style={category === c ? { backgroundColor: CATEGORY_COLORS[c], color: "#fff" } : {}}
-            >
-              <CategoryIcon category={c} size={12} /> {c}
-            </button>
-          ))}
-        </div>
+        <ChipPicker
+          options={expenseCategories.includes(category) ? expenseCategories : [...expenseCategories, category]}
+          value={category}
+          onChange={setCategory}
+          colorFor={categoryColor}
+          onCreate={addExpenseCategory}
+          showIcons
+          newLabel="New category"
+        />
       </FormField>
       <FormField label="Description">
         <input

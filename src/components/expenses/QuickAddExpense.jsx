@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from "react";
-import { EXPENSE_CATEGORIES, CATEGORY_COLORS } from "../../constants.js";
 import { parseQuickAdd, guessCategory } from "../../lib/categorize.js";
 import { todayISO } from "../../lib/dateUtils.js";
 import { uid } from "../../lib/id.js";
+import { currencySymbol } from "../../lib/format.js";
+import { useSettings } from "../../context/SettingsContext.jsx";
 import { IconPlus, CategoryIcon } from "../common/Icons.jsx";
 
 export function QuickAddExpense({ onAdd, recentCategories }) {
@@ -10,19 +11,21 @@ export function QuickAddExpense({ onAdd, recentCategories }) {
   const [manualCategory, setManualCategory] = useState(null);
   const [flash, setFlash] = useState(false);
   const inputRef = useRef(null);
+  const { settings, expenseCategories, customCategories, categoryColor } = useSettings();
+  const customNames = useMemo(() => customCategories.map((c) => c.name), [customCategories]);
 
   const liveGuess = useMemo(() => {
     const parsed = parseQuickAdd(text);
-    return parsed ? guessCategory(parsed.description) : null;
-  }, [text]);
+    return parsed ? guessCategory(parsed.description, customNames) : null;
+  }, [text, customNames]);
 
   const activeCategory = manualCategory || liveGuess;
 
   const orderedCategories = useMemo(() => {
-    const recent = (recentCategories || []).filter((c) => EXPENSE_CATEGORIES.includes(c));
-    const rest = EXPENSE_CATEGORIES.filter((c) => !recent.includes(c));
+    const recent = (recentCategories || []).filter((c) => expenseCategories.includes(c));
+    const rest = expenseCategories.filter((c) => !recent.includes(c));
     return [...recent, ...rest];
-  }, [recentCategories]);
+  }, [recentCategories, expenseCategories]);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -36,7 +39,7 @@ export function QuickAddExpense({ onAdd, recentCategories }) {
       id: uid(),
       amount: parsed.amount,
       date: todayISO(),
-      category: manualCategory || guessCategory(parsed.description),
+      category: manualCategory || guessCategory(parsed.description, customNames),
       description: parsed.description,
       paymentMethod: "Cash",
       notes: "",
@@ -59,7 +62,7 @@ export function QuickAddExpense({ onAdd, recentCategories }) {
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Coffee - €3"
+          placeholder={`Coffee - ${currencySymbol(settings.currency)}3`}
           className={"input-field flex-1 " + (flash === "error" ? "error" : "")}
         />
         <button type="submit" className="btn-primary px-5 py-3 flex items-center gap-1.5">
@@ -73,7 +76,7 @@ export function QuickAddExpense({ onAdd, recentCategories }) {
             key={cat}
             onClick={() => setManualCategory(cat === manualCategory ? null : cat)}
             className={"chip " + (activeCategory === cat ? "selected" : "")}
-            style={activeCategory === cat ? { backgroundColor: CATEGORY_COLORS[cat], color: "#fff" } : {}}
+            style={activeCategory === cat ? { backgroundColor: categoryColor(cat), color: "#fff" } : {}}
           >
             <CategoryIcon category={cat} size={12} /> {cat}
           </button>

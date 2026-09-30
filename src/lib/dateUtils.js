@@ -8,9 +8,20 @@ export function clamp(n, min, max) {
   return Math.min(Math.max(n, min), max);
 }
 
+/** Local calendar date as YYYY-MM-DD. (toISOString is UTC, which gives the wrong day
+ * around midnight during British Summer Time.) */
+export function localISO(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
 export function todayISO() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+  return localISO(new Date());
+}
+
+export function addDaysISO(dateStr, days) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return localISO(d);
 }
 
 export function dateFor(year, month, day) {
@@ -49,7 +60,7 @@ export function keyFor(year, month) {
 
 export function formatDayLabel(dateStr) {
   const today = todayISO();
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const yesterday = addDaysISO(today, -1);
   if (dateStr === today) return "Today";
   if (dateStr === yesterday) return "Yesterday";
   const d = new Date(dateStr + "T00:00:00");
