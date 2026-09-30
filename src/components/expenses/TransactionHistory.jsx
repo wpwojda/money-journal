@@ -5,7 +5,20 @@ import { useSettings } from "../../context/SettingsContext.jsx";
 import { IconSearch, IconClose, IconRepeat, IconEdit } from "../common/Icons.jsx";
 import { CategoryTag } from "../common/CategoryTag.jsx";
 
-export function TransactionHistory({ items, onEdit, onDelete }) {
+function longDayLabel(dateStr) {
+  const short = formatDayLabel(dateStr);
+  if (short === "Today" || short === "Yesterday") return short;
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function TransactionHistory({ items: monthItems, allItems, monthName, onEdit, onDelete }) {
+  const [scope, setScope] = useState("month"); // "month" | "all"
+  const items = scope === "all" && allItems ? allItems : monthItems;
   const { formatCurrency: fmt, expenseCategories, categoryColor } = useSettings();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -53,6 +66,22 @@ export function TransactionHistory({ items, onEdit, onDelete }) {
 
   return (
     <div>
+      {allItems && (
+        <div className="flex gap-1.5 mb-3">
+          {[
+            ["month", monthName || "This month"],
+            ["all", "All time"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setScope(id)}
+              className={"px-3 py-1 rounded-lg text-xs font-medium " + (scope === id ? "btn-primary" : "btn-ghost")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-c">
@@ -86,6 +115,11 @@ export function TransactionHistory({ items, onEdit, onDelete }) {
         </div>
       )}
 
+      {groups.length > 0 && search.trim() && (
+        <p className="text-xs text-muted-c mb-2 px-1">
+          {filtered.length} {filtered.length === 1 ? "match" : "matches"}
+        </p>
+      )}
       {groups.length === 0 ? (
         <p className="text-sm text-muted-c py-6 text-center">Nothing matches yet.</p>
       ) : (
@@ -93,7 +127,7 @@ export function TransactionHistory({ items, onEdit, onDelete }) {
           {groups.map(([date, dayItems]) => (
             <div key={date}>
               <div className="text-xs font-medium text-muted-c uppercase tracking-wide mb-1 px-1">
-                {formatDayLabel(date)}
+                {scope === "all" ? longDayLabel(date) : formatDayLabel(date)}
               </div>
               <div className="space-y-1">
                 {dayItems.map((item) => (

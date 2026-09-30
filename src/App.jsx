@@ -119,6 +119,12 @@ export default function App() {
   const monthKey = keyFor(cursor.year, cursor.month);
   const prevCursor = shiftMonth(cursor.year, cursor.month, -1);
   const prevMonthKey = keyFor(prevCursor.year, prevCursor.month);
+  // Allow viewing one month ahead: income that "counts towards next month" lives there.
+  const canGoForward = (() => {
+    const d = new Date();
+    const limit = shiftMonth(d.getFullYear(), d.getMonth() + 1, 1);
+    return cursor.year < limit.year || (cursor.year === limit.year && cursor.month < limit.month);
+  })();
   const isCurrentMonth = (() => {
     const d = new Date();
     return d.getFullYear() === cursor.year && d.getMonth() + 1 === cursor.month;
@@ -219,6 +225,12 @@ export default function App() {
     [monthExpenses, monthIncome, prevMonthExpenses, allTimeBalance, cursor, totalPlannedRemaining, totalPlannedBudgeted, budgetItemsComputed.length, data.settings.currency]
   );
 
+  const allTransactions = useMemo(() => {
+    const exp = effectiveExpenses.map((e) => ({ ...e, type: "expense" }));
+    const inc = effectiveIncome.map((i) => ({ ...i, type: "income" }));
+    return [...exp, ...inc].sort((a, b) => b.date.localeCompare(a.date));
+  }, [effectiveExpenses, effectiveIncome]);
+
   const transactions = useMemo(() => {
     const exp = monthExpenses.map((e) => ({ ...e, type: "expense" }));
     const inc = monthIncome.map((i) => ({ ...i, type: "income" }));
@@ -299,8 +311,18 @@ export default function App() {
   function updateBudgetItem(item) {
     setData((d) => ({ ...d, budgetItems: (d.budgetItems || []).map((b) => (b.id === item.id ? item : b)) }));
   }
-  function deleteBudgetItem(id) {
-    setData((d) => ({ ...d, budgetItems: (d.budgetItems || []).filter((b) => b.id !== id) }));
+  /** Deletes a recurring item, optionally along with every transaction it logged. */
+  function deleteBudgetItem(id, removeEntries = false) {
+    setData((d) => ({
+      ...d,
+      budgetItems: (d.budgetItems || []).filter((b) => b.id !== id),
+      expenses: removeEntries ? d.expenses.filter((e) => e.budgetItemId !== id) : d.expenses,
+      income: removeEntries ? d.income.filter((i) => i.budgetItemId !== id) : d.income,
+    }));
+  }
+  /** Every transaction a recurring item has logged, across all months. */
+  function entriesForItem(id) {
+    return [...data.expenses, ...data.income].filter((t) => t.budgetItemId === id);
   }
   function toggleBudgetItemActive(id) {
     setData((d) => ({
@@ -469,8 +491,8 @@ export default function App() {
               </span>
               <button
                 onClick={() => setCursor((c) => shiftMonth(c.year, c.month, 1))}
-                disabled={isCurrentMonth}
-                className={"p-1.5 rounded-lg hover:bg-[var(--surface-muted)] text-secondary-c " + (isCurrentMonth ? "opacity-30 cursor-not-allowed" : "")}
+                disabled={!canGoForward}
+                className={"p-1.5 rounded-lg hover:bg-[var(--surface-muted)] text-secondary-c " + (!canGoForward ? "opacity-30 cursor-not-allowed" : "")}
               >
                 <IconChevron dir="right" />
               </button>
@@ -559,7 +581,11 @@ export default function App() {
 
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Recent activity</h3>
-              <TransactionHistory items={transactions} onEdit={(item) => setEditing({ type: item.type, item })} onDelete={requestDelete} />
+              <TransactionHistory
+                items={transactions}
+                allItems={allTransactions}
+                monthName={monthLabel(cursor.year, cursor.month)}
+                onEdit={(item) => setEditing({ type: item.type, item })} onDelete={requestDelete} />
             </div>
           </div>
         </div>
@@ -617,6 +643,7 @@ export default function App() {
             onAdd={addBudgetItem}
             onUpdate={updateBudgetItem}
             onDelete={deleteBudgetItem}
+            entriesForItem={entriesForItem}
             onToggleActive={toggleBudgetItemActive}
             onReorder={reorderBudgetItem}
             onLogItem={logBudgetItem}

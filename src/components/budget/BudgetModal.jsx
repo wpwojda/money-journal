@@ -18,6 +18,7 @@ export function BudgetModal({
   onAdd,
   onUpdate,
   onDelete,
+  entriesForItem,
   onToggleActive,
   onReorder,
   onLogItem,
@@ -113,12 +114,18 @@ export function BudgetModal({
                   </button>
                   <button
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          `Delete "${it.name}"? It will stop repeating. Transactions it already logged stay in your history.`
-                        )
-                      )
-                        onDelete(it.id);
+                      if (!window.confirm(`Delete "${it.name}"? It will stop repeating.`)) return;
+                      const entries = entriesForItem(it.id);
+                      if (entries.length === 0) {
+                        onDelete(it.id, false);
+                        return;
+                      }
+                      const total = entries.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+                      const removeEntries = window.confirm(
+                        `"${it.name}" has logged ${entries.length} ${entries.length === 1 ? "entry" : "entries"} ` +
+                          `(${fmt(total)} in total).\n\nOK: delete those entries too.\nCancel: keep them in your history.`
+                      );
+                      onDelete(it.id, removeEntries);
                     }}
                     className="p-1 text-muted-c hover:text-rose-400"
                   >
