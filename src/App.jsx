@@ -45,7 +45,6 @@ import { MonthlyFinancialSummary } from "./components/dashboard/MonthlyFinancial
 import { CategoryDonut } from "./components/charts/CategoryDonut.jsx";
 import { TrendChart } from "./components/charts/TrendChart.jsx";
 import { DailyTimeline } from "./components/charts/DailyTimeline.jsx";
-import { QuickAddExpense } from "./components/expenses/QuickAddExpense.jsx";
 import { ExpenseForm } from "./components/expenses/ExpenseForm.jsx";
 import { IncomeForm } from "./components/expenses/IncomeForm.jsx";
 import { TransactionHistory } from "./components/expenses/TransactionHistory.jsx";
@@ -198,14 +197,6 @@ export default function App() {
     return entries[0] || null;
   }, [budgetItemsComputed]);
 
-  const recentCategories = useMemo(() => {
-    const seen = [];
-    for (const e of effectiveExpenses.slice().sort(newestFirst)) {
-      if (!seen.includes(e.category)) seen.push(e.category);
-      if (seen.length >= 5) break;
-    }
-    return seen;
-  }, [effectiveExpenses]);
 
   const fmt = (n) => formatCurrency(n, data.settings.currency);
 
@@ -520,16 +511,13 @@ export default function App() {
 
         <div className="grid md:grid-cols-3 gap-5">
           <div className="md:col-span-2 space-y-5">
-            <QuickAddExpense onAdd={addExpense} recentCategories={recentCategories} />
-            <div className="grid sm:grid-cols-2 gap-5">
-              <div className="card p-5">
-                <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Spending by category</h3>
-                <CategoryDonut expenses={monthExpenses} />
-              </div>
-              <div className="card p-5">
-                <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Daily spending</h3>
-                <DailyTimeline expenses={monthExpenses} year={cursor.year} month={cursor.month} />
-              </div>
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-4">Spending by category</h3>
+              <CategoryDonut expenses={monthExpenses} income={totalIncomeMonth} />
+            </div>
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Daily spending</h3>
+              <DailyTimeline expenses={monthExpenses} year={cursor.year} month={cursor.month} />
             </div>
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Monthly trend</h3>

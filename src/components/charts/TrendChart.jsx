@@ -29,7 +29,13 @@ export function TrendChart({ allExpenses, year, month }) {
       <LineChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
         <XAxis dataKey="name" tick={{ fontSize: 12, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={50} />
+        <YAxis
+          tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+          axisLine={false}
+          tickLine={false}
+          width={50}
+          tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${+(v / 1000).toFixed(1)}k` : v)}
+        />
         <Tooltip formatter={(v) => fmt(v)} />
         <Line type="monotone" dataKey="expenses" stroke="#E39C8F" strokeWidth={2.5} dot={{ r: 3, fill: "#E39C8F" }} name="Expenses" />
       </LineChart>

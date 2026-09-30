@@ -24,7 +24,13 @@ export function DailyTimeline({ expenses, year, month }) {
       <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
         <XAxis dataKey="day" tick={{ fontSize: 10, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} interval={2} />
-        <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={50} />
+        <YAxis
+          tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+          axisLine={false}
+          tickLine={false}
+          width={50}
+          tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${+(v / 1000).toFixed(1)}k` : v)}
+        />
         <Tooltip formatter={(v) => fmt(v)} labelFormatter={(d) => `Day ${d}`} />
         <Bar dataKey="amount" fill="#7FA3C4" radius={[4, 4, 0, 0]} />
       </BarChart>
