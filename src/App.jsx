@@ -522,6 +522,16 @@ export default function App() {
               <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Monthly trend</h3>
               <TrendChart allExpenses={effectiveExpenses} year={cursor.year} month={cursor.month} />
             </div>
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Recent activity</h3>
+              <TransactionHistory
+                items={transactions}
+                allItems={allTransactions}
+                monthName={monthLabel(cursor.year, cursor.month)}
+                onEdit={(item) => setEditing({ type: item.type, item })}
+                onDelete={requestDelete}
+              />
+            </div>
           </div>
 
           <div className="space-y-5">
@@ -567,14 +577,6 @@ export default function App() {
               largestBudgetCategory={largestBudgetCategory}
             />
 
-            <div className="card p-5">
-              <h3 className="text-sm font-semibold text-secondary-c uppercase tracking-wide mb-2">Recent activity</h3>
-              <TransactionHistory
-                items={transactions}
-                allItems={allTransactions}
-                monthName={monthLabel(cursor.year, cursor.month)}
-                onEdit={(item) => setEditing({ type: item.type, item })} onDelete={requestDelete} />
-            </div>
           </div>
         </div>
 

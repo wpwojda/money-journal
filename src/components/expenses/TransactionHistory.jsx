@@ -123,7 +123,7 @@ export function TransactionHistory({ items: monthItems, allItems, monthName, onE
       {groups.length === 0 ? (
         <p className="text-sm text-muted-c py-6 text-center">Nothing matches yet.</p>
       ) : (
-        <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-[40rem] overflow-y-auto pr-1">
           {groups.map(([date, dayItems]) => (
             <div key={date}>
               <div className="text-xs font-medium text-muted-c uppercase tracking-wide mb-1 px-1">
