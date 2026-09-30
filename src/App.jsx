@@ -11,6 +11,7 @@ import {
 } from "./lib/storage.js";
 import { formatCurrency, sum } from "./lib/format.js";
 import { applyTheme } from "./lib/theme.js";
+import { newestFirst } from "./lib/id.js";
 import {
   shiftMonth,
   keyFor,
@@ -131,7 +132,7 @@ export default function App() {
   })();
 
   const monthExpenses = useMemo(
-    () => effectiveExpenses.filter((e) => monthKeyOf(e.date) === monthKey).sort((a, b) => b.date.localeCompare(a.date)),
+    () => effectiveExpenses.filter((e) => monthKeyOf(e.date) === monthKey).sort(newestFirst),
     [effectiveExpenses, monthKey]
   );
   const monthIncome = useMemo(
@@ -140,7 +141,7 @@ export default function App() {
     () =>
       effectiveIncome
         .filter((i) => (i.budgetMonth || monthKeyOf(i.date)) === monthKey)
-        .sort((a, b) => b.date.localeCompare(a.date)),
+        .sort(newestFirst),
     [effectiveIncome, monthKey]
   );
   const prevMonthExpenses = useMemo(
@@ -199,7 +200,7 @@ export default function App() {
 
   const recentCategories = useMemo(() => {
     const seen = [];
-    for (const e of effectiveExpenses.slice().sort((a, b) => b.date.localeCompare(a.date))) {
+    for (const e of effectiveExpenses.slice().sort(newestFirst)) {
       if (!seen.includes(e.category)) seen.push(e.category);
       if (seen.length >= 5) break;
     }
@@ -228,13 +229,13 @@ export default function App() {
   const allTransactions = useMemo(() => {
     const exp = effectiveExpenses.map((e) => ({ ...e, type: "expense" }));
     const inc = effectiveIncome.map((i) => ({ ...i, type: "income" }));
-    return [...exp, ...inc].sort((a, b) => b.date.localeCompare(a.date));
+    return [...exp, ...inc].sort(newestFirst);
   }, [effectiveExpenses, effectiveIncome]);
 
   const transactions = useMemo(() => {
     const exp = monthExpenses.map((e) => ({ ...e, type: "expense" }));
     const inc = monthIncome.map((i) => ({ ...i, type: "income" }));
-    return [...exp, ...inc].sort((a, b) => b.date.localeCompare(a.date));
+    return [...exp, ...inc].sort(newestFirst);
   }, [monthExpenses, monthIncome]);
 
   // Automatic items log themselves, so only manual ones need a nudge.
